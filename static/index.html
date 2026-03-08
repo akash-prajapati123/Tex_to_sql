@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-SQL AI Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0f172a;
+            --surface-1: rgba(30, 41, 59, 0.7);
+            --surface-2: rgba(51, 65, 85, 0.6);
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.4);
+            --secondary: #8b5cf6;
+            --secondary-glow: rgba(139, 92, 246, 0.4);
+            --accent: #10b981;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            background-image:
+                radial-gradient(circle at 10% 20%, var(--primary-glow) 0px, transparent 40%),
+                radial-gradient(circle at 90% 80%, var(--secondary-glow) 0px, transparent 40%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            overflow: hidden;
+        }
+
+        .app-window {
+            width: 100%;
+            max-width: 1200px;
+            height: 85vh;
+            background: var(--surface-1);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.98);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* HEADER & TABS */
+        header {
+            padding: 1.5rem 2rem 0;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding-bottom: 1.5rem;
+        }
+
+        .brand i {
+            font-size: 1.8rem;
+            color: var(--primary);
+            filter: drop-shadow(0 0 10px var(--primary-glow));
+        }
+
+        .brand h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            background: linear-gradient(to right, #60a5fa, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            border-bottom: none;
+            color: var(--text-muted);
+            padding: 0.8rem 1.5rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 12px 12px 0 0;
+            transition: all 0.2s;
+            position: relative;
+            top: 1px;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .tab-btn.active {
+            background: var(--surface-1);
+            color: var(--primary);
+            border-color: var(--border);
+        }
+
+        /* TAB CONTENT AREAS */
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+            animation: fadeTab 0.3s;
+        }
+
+        @keyframes fadeTab {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* --- SCHEMA BUILDER CSS --- */
+        .schema-area {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .schema-area::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .schema-area::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--secondary-glow);
+        }
+
+        .tables-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .table-card {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+
+        .table-card:hover {
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        input,
+        select {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--primary);
+        }
+
+        .table-name-input {
+            font-size: 1.1rem;
+            font-weight: 600;
+            width: 60%;
+            background: transparent;
+            border: 1px solid transparent;
+        }
+
+        .table-name-input:hover,
+        .table-name-input:focus {
+            background: rgba(0, 0, 0, 0.2);
+            border-color: var(--border);
+        }
+
+        .column-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr auto auto;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 6px;
+        }
+
+        .col-settings {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            padding-top: 0.3rem;
+        }
+
+        .col-settings label {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            cursor: pointer;
+        }
+
+        .col-settings select {
+            padding: 0.2rem;
+            font-size: 0.75rem;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.3rem;
+            transition: color 0.2s;
+        }
+
+        .icon-btn:hover {
+            color: var(--text-main);
+        }
+
+        .icon-btn.delete:hover {
+            color: var(--danger);
+        }
+
+        /* Loading Overlay */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .spinner {
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* --- CHAT CSS --- */
+        .chat-area {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            scroll-behavior: smooth;
+        }
+
+        .chat-area::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-area::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .message {
+            display: flex;
+            gap: 1rem;
+            max-width: 85%;
+            animation: slideIn 0.3s ease-out forwards;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+        }
+
+        .user .avatar {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        .ai .avatar {
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            color: white;
+            border: none;
+        }
+
+        .bubble {
+            padding: 1rem 1.2rem;
+            border-radius: 16px;
+            line-height: 1.5;
+            font-size: 0.95rem;
+            position: relative;
+        }
+
+        .user .bubble {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-top-right-radius: 4px;
+        }
+
+        .ai .bubble {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--border);
+            border-top-left-radius: 4px;
+        }
+
+        .source-data {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .code-block {
+            font-family: 'Fira Code', monospace;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.8rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            color: #a5b4fc;
+        }
+
+        .input-area {
+            padding: 1.5rem 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid var(--border);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+            transition: all 0.3s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .chat-submit-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .chat-submit-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px var(--secondary-glow);
+        }
+
+        /* TYPING ANIMATION */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 0.5rem 0;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+                opacity: 0.5;
+            }
+
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-window">
+        <!-- GLOBAL APP OVERLAY -->
+        <div class="overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <h3 id="overlayText">Processing...</h3>
+            <p
+                style="color: var(--text-muted); margin-top: 0.5rem; max-width: 400px; text-align: center; font-size: 0.9rem;">
+                This can take ~30 seconds as the AI reads your new schema and seeds the database with highly realistic
+                mock data!
+            </p>
+        </div>
+
+        <header>
+            <div class="brand">
+                <i class="fas fa-layer-group"></i>
+                <div>
+                    <h1>Architect AI</h1>
+                    <p>Dynamic Schema Builder & SQL Chatbot</p>
+                </div>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('schema')"><i class="fas fa-sitemap"></i> Design
+                    Schema</button>
+                <button class="tab-btn" onclick="switchTab('chat')"><i class="fas fa-comments"></i> Chat with
+                    Data</button>
+            </div>
+        </header>
+
+        <!-- SCHEMA BUILDER VIEW -->
+        <div id="schemaView" class="tab-content active">
+            <div class="schema-area">
+                <div class="toolbar">
+                    <p style="color: var(--text-muted);"><i class="fas fa-info-circle"></i> Design your database layout.
+                        AI will automatically populate it when you deploy!</p>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn" onclick="addTable()"><i class="fas fa-plus"></i> Add Table</button>
+                        <button class="btn btn-primary" onclick="deploySchema()"><i class="fas fa-cloud-upload-alt"></i>
+                            Deploy Schema & Seed</button>
+                    </div>
+                </div>
+                <div class="tables-grid" id="tablesContainer">
+                    <!-- Default Table Example -->
+                </div>
+            </div>
+        </div>
+
+        <!-- CHAT VIEW -->
+        <div id="chatView" class="tab-content">
+            <div class="chat-area" id="chatContainer">
+                <div class="message ai">
+                    <div class="avatar"><i class="fas fa-robot"></i></div>
+                    <div class="bubble">
+                        Hello! Let's talk about your data. If you built a new Database Schema, ask me complex questions
+                        that use JOINs based on exactly what you built!
+                    </div>
+                </div>
+            </div>
+            <div class="input-area">
+                <form id="chatForm" class="input-wrapper">
+                    <input type="text" id="chatInput" placeholder="Ask a question about your custom data..."
+                        autocomplete="off">
+                    <button type="submit" class="chat-submit-btn" id="sendBtn"><i
+                            class="fas fa-paper-plane"></i></button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- NAVIGATION STATE ---
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            if (tab === 'schema') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('schemaView').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('chatView').classList.add('active');
+            }
+        }
+
+
+        // --- SCHEMA BUILDER LOGIC ---
+        let tablesData = [];
+        let tableIdCounter = 0;
+        let colIdCounter = 0;
+
+        // Initialize with default Users and Events
+        window.addEventListener('DOMContentLoaded', () => {
+            const tId = addTable("users");
+            addColumn(tId, "id", "INTEGER", true);
+            addColumn(tId, "username", "TEXT");
+            addColumn(tId, "email", "TEXT");
+
+            const tId2 = addTable("posts");
+            addColumn(tId2, "id", "INTEGER", true);
+            addColumn(tId2, "user_id", "INTEGER", false, "users", "id");
+            addColumn(tId2, "content", "TEXT");
+            addColumn(tId2, "likes", "INTEGER");
+        });
+
+        function addTable(defaultName = "") {
+            const tId = tableIdCounter++;
+            const name = defaultName || `new_table_${tId}`;
+            tablesData.push({ id: tId, name: name, columns: [] });
+            renderSchema();
+            return tId;
+        }
+
+        function removeTable(tId) {
+            tablesData = tablesData.filter(t => t.id !== tId);
+            renderSchema();
+        }
+
+        function updateTableName(tId, newName) {
+            const table = tablesData.find(t => t.id === tId);
+            if (table) { table.name = newName.replace(/[^a-zA-Z0-9_]/g, ''); }
+            renderSchema(); // Re-render to update FK dropdowns
+        }
+
+        function addColumn(tId, defaultName = "", defaultType = "TEXT", isPrimary = false, refTable = "", refCol = "") {
+            const table = tablesData.find(t => t.id === tId);
+            if (!table) return;
+            const cId = colIdCounter++;
+            table.columns.push({
+                id: cId,
+                name: defaultName || `col_${cId}`,
+                type: defaultType,
+                isPrimary: isPrimary,
+                refTable: refTable,
+                refCol: refCol
+            });
+            renderSchema();
+        }
+
+        function removeColumn(tId, cId) {
+            const table = tablesData.find(t => t.id === tId);
+            if (table) table.columns = table.columns.filter(c => c.id !== cId);
+            renderSchema();
+        }
+
+        function updateColumn(tId, cId, key, value) {
+            const table = tablesData.find(t => t.id === tId);
+            if (!table) return;
+            const col = table.columns.find(c => c.id === cId);
+            if (col) col[key] = value;
+            if (key === 'isPrimary' && value === true) {
+                // Ensure only one PK
+                table.columns.forEach(c => { if (c.id !== cId) c.isPrimary = false; });
+            }
+            renderSchema();
+        }
+
+        function renderSchema() {
+            const container = document.getElementById('tablesContainer');
+            container.innerHTML = '';
+
+            tablesData.forEach(table => {
+                const card = document.createElement('div');
+                card.className = 'table-card';
+
+                // Table Header
+                card.innerHTML = `
+                    <div class="table-header">
+                        <input type="text" class="table-name-input" value="${table.name}" onchange="updateTableName(${table.id}, this.value)" placeholder="Table Name">
+                        <div>
+                            <button class="icon-btn" onclick="addColumn(${table.id})" title="Add Column"><i class="fas fa-plus"></i></button>
+                            <button class="icon-btn delete" onclick="removeTable(${table.id})" title="Delete Table"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="columns-container" id="cols_${table.id}"></div>
+                `;
+                container.appendChild(card);
+
+                // Render Columns
+                const colsContainer = card.querySelector(`#cols_${table.id}`);
+                table.columns.forEach(col => {
+                    const row = document.createElement('div');
+                    row.className = 'column-row';
+
+                    // Generate Foreign Key Options
+                    let fkSelectHtml = `<select onchange="updateColumn(${table.id}, ${col.id}, 'refTable', this.value.split('.')[0]); updateColumn(${table.id}, ${col.id}, 'refCol', this.value.split('.')[1] || '');">
+                                            <option value="">No Foreign Key</option>`;
+                    tablesData.forEach(t => {
+                        // Can't reference self table easily in this simple UI
+                        if (t.id !== table.id) {
+                            t.columns.forEach(c => {
+                                const selected = (col.refTable === t.name && col.refCol === c.name) ? "selected" : "";
+                                fkSelectHtml += `<option value="${t.name}.${c.name}" ${selected}>Ref: ${t.name}.${c.name}</option>`;
+                            });
+                        }
+                    });
+                    fkSelectHtml += `</select>`;
+
+                    row.innerHTML = `
+                        <input type="text" value="${col.name}" onchange="updateColumn(${table.id}, ${col.id}, 'name', this.value)" placeholder="col_name" style="width:100%">
+                        <select onchange="updateColumn(${table.id}, ${col.id}, 'type', this.value)" style="width:100%">
+                            <option value="TEXT" ${col.type === 'TEXT' ? 'selected' : ''}>TEXT</option>
+                            <option value="INTEGER" ${col.type === 'INTEGER' ? 'selected' : ''}>INT</option>
+                            <option value="REAL" ${col.type === 'REAL' ? 'selected' : ''}>REAL</option>
+                            <option value="DATE" ${col.type === 'DATE' ? 'selected' : ''}>DATE</option>
+                        </select>
+                        <label title="Primary Key"><input type="checkbox" onchange="updateColumn(${table.id}, ${col.id}, 'isPrimary', this.checked)" ${col.isPrimary ? 'checked' : ''}><i class="fas fa-key" style="color:gold"></i></label>
+                        <button class="icon-btn delete" onclick="removeColumn(${table.id}, ${col.id})"><i class="fas fa-times"></i></button>
+                        
+                        <div class="col-settings">
+                            ${fkSelectHtml}
+                        </div>
+                    `;
+                    colsContainer.appendChild(row);
+                });
+            });
+        }
+
+
+        // --- BACKEND INTEGRATION ---
+
+        async function deploySchema() {
+            // Reformat payload for backend
+            const payload = {
+                tables: tablesData.map(t => ({
+                    name: t.name,
+                    columns: t.columns.map(c => ({
+                        name: c.name,
+                        type: c.type,
+                        is_primary: c.isPrimary,
+                        is_foreign_key: !!c.refTable,
+                        references_table: c.refTable || null,
+                        references_column: c.refCol || null
+                    }))
+                }))
+            };
+
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.display = 'flex';
+
+            try {
+                const response = await fetch('/api/schema', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const res = await response.json();
+
+                if (!response.ok) throw new Error(res.detail || "Deploy Failed");
+
+                alert("Schema successfully validated, created, and populated with ML-generated data!\nYou can now switch to the Chat tab.");
+                switchTab('chat');
+            } catch (err) {
+                alert("Error configuring schema: " + err.message);
+            } finally {
+                overlay.style.display = 'none';
+            }
+        }
+
+
+        // --- CHAT LOGIC ---
+        const chatForm = document.getElementById('chatForm');
+        const chatInput = document.getElementById('chatInput');
+        const chatContainer = document.getElementById('chatContainer');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function appendMessage(text, isUser = false) {
+            const div = document.createElement('div');
+            div.className = `message ${isUser ? 'user' : 'ai'}`;
+            div.innerHTML = `
+                <div class="avatar"><i class="fas ${isUser ? 'fa-user' : 'fa-robot'}"></i></div>
+                <div class="bubble">${text}</div>
+            `;
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return div.querySelector('.bubble');
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const question = chatInput.value.trim();
+            if (!question) return;
+
+            appendMessage(question, true);
+            chatInput.value = '';
+            chatInput.disabled = true;
+            sendBtn.disabled = true;
+
+            // Typing indicator
+            const typingBubble = appendMessage(`<div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`);
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+
+                const data = await response.json();
+                typingBubble.parentElement.remove(); // remove typing
+
+                if (!response.ok) throw new Error(data.detail);
+
+                const bubbleDiv = appendMessage(data.final_answer);
+
+                // Add source info if available
+                if (data.sql_query) {
+                    const sourceHtml = `
+                        <div class="source-data">
+                            <h4><i class="fas fa-code"></i> Execution Trace</h4>
+                            <div><strong>SQL Generated:</strong><div class="code-block">${data.sql_query}</div></div>
+                            ${data.db_results ? `<div><strong>DB Output:</strong><div class="code-block" style="color: #6ee7b7;">${data.db_results.substring(0, 300)}...</div></div>` : ''}
+                        </div>
+                    `;
+                    bubbleDiv.insertAdjacentHTML('beforeend', sourceHtml);
+                }
+            } catch (error) {
+                typingBubble.parentElement.remove();
+                appendMessage(`Error: ${error.message}`).style.color = 'var(--danger)';
+            } finally {
+                chatInput.disabled = false;
+                sendBtn.disabled = false;
+                chatInput.focus();
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        });
+    </script>
+</body>
+
+</html>
